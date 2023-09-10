@@ -2,6 +2,7 @@ import { Router } from "express";
 import { checkUserAuthenticated, showLoginView } from "../src/midlwares/auth.js";
 import { userService } from "../src/dao/index.js";
 import passport from "passport";
+import { createHash, isValidPassword } from "../src/utils.js";
 
 const sessionRouter = Router();
 
@@ -21,22 +22,55 @@ sessionRouter.get("/",(req,res)=>{
     console.log(req.session);
 });
 
-sessionRouter.post("/signup", async(req,res)=>{
-    try {
-        const signupForm = req.body;
-        console.log("Received POST request:", signupForm);
-        //verificar si el usuario ya se registro
-        const user = await userService.getByEmail(signupForm.email);
-        console.log(user);
-        if(user){
-            return res.render("signup",{error:"el usuario ya esta registrado"});
-        }
-        const result = await userService.save(signupForm);
-        res.render("signup",{message:"usuario registrado"});
-    } catch (error) {
-        res.render("sessions",{error:error.message});
-    }
+// sessionRouter.post("/signup", async(req,res)=>{
+//     try {
+//         const signupForm = req.body;
+//         console.log("Received POST request:", signupForm);
+//         //verificar si el usuario ya se registro
+//         const user = await userService.getByEmail(signupForm.email);
+//         console.log(user);
+//         if(user){
+//             return res.render("signup",{error:"el usuario ya esta registrado"});
+//         }
+//         const newUser = {
+//             first_name:signupForm.first_name,
+//             email:signupForm.email,
+//             password: createHash(signupForm.password)
+//         }
+//         const result = await userService.save(newUser);
+//         res.render("signup",{message:"usuario registrado"});
+//     } catch (error) {
+//         res.render("sessions",{error:error.message});
+//     }
+// });
+
+// const sessionRouter = Router();
+
+sessionRouter.post("/signup", passport.authenticate("signupStrategy", {
+    failureRedirect:"/fail-signup"
+}), (req,res)=>{
+    res.redirect("/login");
+} );
+
+sessionRouter.get("/fail-signup", (req,res)=>{
+    res.send("<p>No se pudo registrar al usuario, <a href='/registro'>intenta de nuevo</a></p>");
 });
+
+sessionRouter.post("/login", passport.authenticate("loginStrategy", {
+    failureRedirect:"/fail-login"
+}), (req,res)=>{
+    const user = req.user;
+    console.log("user", user);
+    res.render("profile",{user});
+});
+
+sessionRouter.get("/fail-login", (req,res)=>{
+    res.send("<p>No se pudo loguear al usuario, <a href='/login'>intenta de nuevo</a></p>");
+});
+
+
+export {router as sessionsRouter};
+
 
 sessionRouter.post("/profile", async(req,res)=>{
     try {
@@ -48,7 +82,7 @@ sessionRouter.post("/profile", async(req,res)=>{
             return res.render("sessions",{error:"El usuario no se ha registrado"});
         }
         //si el usuario existe, validar la contraseña
-        if(user.password === loginForm.password){
+        if(isValidPassword(user,loginForm.password)){
             //si la contraseña es valida, creamos la session
             req.session.userInfo = {
                 first_name:user.first_name,
@@ -76,6 +110,11 @@ sessionRouter.get("/loginGithub", passport.authenticate("githubLoginStrategy"));
 sessionRouter.get("/github-callback", passport.authenticate("githubLoginStrategy",{
     failureRedirect:"/fail-signup"
 }), (req,res)=>{
+    console.log('GitHub authentication successful, redirecting to /perfil');
+    req.session.userInfo = {
+        first_name: req.user.first_name,
+        email: req.user.email
+    };
     res.redirect("/perfil");
 });
 
