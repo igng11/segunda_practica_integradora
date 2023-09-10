@@ -1,8 +1,12 @@
 import { Router } from "express";
-import { checkUserAuthenticated, showLoginView } from "../src/midlwares/auth.js";
-import { userService } from "../src/dao/index.js";
+import { checkUserAuthenticated, showLoginView } from "../middlwares/auth.js";
+import { userService } from "../dao/index.js";
 import passport from "passport";
+<<<<<<< HEAD:routes/sessions.routes.js
 import { createHash, isValidPassword } from "../src/utils.js";
+=======
+import { createHash, isValidPassword } from "../utils.js";
+>>>>>>> 85eb82222782d0219731f8539604fd97a7f40ecb:src/routes/sessions.routes.js
 
 const sessionRouter = Router();
 
@@ -22,6 +26,7 @@ sessionRouter.get("/",(req,res)=>{
     console.log(req.session);
 });
 
+<<<<<<< HEAD:routes/sessions.routes.js
 // sessionRouter.post("/signup", async(req,res)=>{
 //     try {
 //         const signupForm = req.body;
@@ -54,6 +59,28 @@ sessionRouter.post("/signup", passport.authenticate("signupStrategy", {
 
 sessionRouter.get("/fail-signup", (req,res)=>{
     res.send("<p>No se pudo registrar al usuario, <a href='/registro'>intenta de nuevo</a></p>");
+=======
+sessionRouter.post("/signup", async(req,res)=>{
+    try {
+        const signupForm = req.body;
+        console.log("Received POST request:", signupForm);
+        //verificar si el usuario ya se registro
+        const user = await userService.getByEmail(signupForm.email);
+        console.log(user);
+        if(user){
+            return res.render("signup",{error:"el usuario ya esta registrado"});
+        }
+        const newUser = {
+            first_name:signupForm.first_name,
+            email:signupForm.email,
+            password: createHash(signupForm.password)
+        }
+        const result = await userService.save(newUser);
+        res.render("signup",{message:"usuario registrado"});
+    } catch (error) {
+        res.render("sessions",{error:error.message});
+    }
+>>>>>>> 85eb82222782d0219731f8539604fd97a7f40ecb:src/routes/sessions.routes.js
 });
 
 sessionRouter.post("/login", passport.authenticate("loginStrategy", {
